@@ -4,12 +4,15 @@ namespace OCNContainer.InternalData
 {
     public class RegistrationData
     {
-        public Type CurrentType;
-        public object Obj;
-        public bool IsLazy = false;
-        public bool IsAlreadyRegisteredInGameCycle = false;
-        public bool RegisteredFromImplementation;
-        public bool IsFacade = false;
+        public Type CurrentType { get; private set; }
+        public object Obj => _obj == null ? _creationMethod.Invoke() : _obj;
+        public bool IsLazy { get; private set; } = false;
+        public bool IsAlreadyRegisteredInGameCycle { get; private set; } = false;
+        public bool RegisteredFromImplementation { get; private set; }
+        public bool IsFacade { get; private set; } = false;
+
+        private object _obj;
+        private Func<object> _creationMethod;
 
         private RegistrationData()
         {

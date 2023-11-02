@@ -32,12 +32,14 @@ namespace OCNContainer.InternalData
             }
         }
 
+        
+        
         void IScopeRegistration.RegisterFromInstance<T>(T instance) where T : class
         {
-            RegisterFromInstance<T>(instance, false);
+            RegisterFromInstance_Internal<T>(instance, false);
         }
         
-        private void RegisterFromInstance<T>(T instance, bool isFacade = false) where T : class
+        private void RegisterFromInstance_Internal<T>(T instance, bool isFacade = false) where T : class
         {
             if (instance == null)
             {
@@ -59,7 +61,7 @@ namespace OCNContainer.InternalData
             }
         }
         
-        public void Bind_Internal<TImplementation, TInterface>(bool isLazy = false)
+        private void Bind_Internal<TImplementation, TInterface>(bool isLazy = false)
             where TImplementation : class, TInterface, new()
         {
             if (typeof(TImplementation).IsSubclassOf(typeof(MonoBehaviour)))
@@ -122,7 +124,7 @@ namespace OCNContainer.InternalData
         }
 
 
-        public void Register<T>(bool isLazy = false, bool isFacade = false) where T : class, new()
+        private void Register_Internal<T>(bool isLazy = false, bool isFacade = false) where T : class, new()
         {
             if (typeof(T).IsSubclassOf(typeof(MonoBehaviour)))
             {
@@ -259,29 +261,6 @@ namespace OCNContainer.InternalData
                         $"Trying to add Lazy class: \"{typeof(T)}\" to Update only game cycle, yet it implements some of full game cycle interfaces (they would be ignored) in Installer: \"{_installerType}\" on GameObject: \"{_bindedGameObject.name}\"");
                 }
             }
-        }
-
-        public void RegisterFacade<T>() where T : class, new()
-        {
-            Register<T>(false, true);
-        }
-
-        public void RegisterFacadeFromInstance<T>(T instance) where T : class
-        {
-            RegisterFromInstance(instance, true);
-        }
-        
-        public void CreateInternalScope<T>(Action<IScopeRegistration> callback)
-        {
-            
-        }
-
-        private void TestInternalScope()
-        {
-            CreateInternalScope<CharacterFacade>((IScopeRegistration scope) =>
-            {
-                
-            });
         }
     }
 }

@@ -10,6 +10,13 @@
         void EventSubscriptions();
     }
 
+    public interface IEnableable
+    {
+        void OnEnable();
+
+        void OnDisable();
+    }
+    
     public interface IStartable
     {
         void Start();

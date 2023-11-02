@@ -1,8 +1,10 @@
-﻿namespace OCNContainer
+﻿using System;
+
+namespace OCNContainer
 {
     public interface IScopeRegistration : IScope
     {
-        //public void Register<T>(bool isLazy) where T : class, new();
+        public void RegisterSubContainer<T>(Action<IScopeRegistration> subContainer);
 
         public void Register<T1>()
             where T1 : class, new();
