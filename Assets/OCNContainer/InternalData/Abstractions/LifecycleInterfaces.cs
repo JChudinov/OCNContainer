@@ -2,6 +2,8 @@
 {
     public interface ILifecycleParticipant
     {
+        public void InstanceCreationPhase();
+        
         public void ScopeResolvePhase();
 
         public void EventSubscriptionsPhase();

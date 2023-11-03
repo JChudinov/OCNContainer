@@ -9,7 +9,20 @@ namespace OCNContainer.InternalData
 
         private List<ILifecycleParticipant> _subContainers = new();
         
-
+        void ILifecycleParticipant.InstanceCreationPhase()
+        {
+            foreach (var subContainer in _subContainers)
+            {
+                subContainer.InstanceCreationPhase();
+            }
+            
+            foreach (var registrationData in _creationPhaseList)
+            {
+                registrationData.CreateObject();
+                AddToFullGameCycle(registrationData);
+            }
+        }
+        
         void ILifecycleParticipant.ScopeResolvePhase()
         {
             foreach (var subContainer in _subContainers)
@@ -47,13 +60,6 @@ namespace OCNContainer.InternalData
             {
                 updateable.Tick();
             }
-        }
-        
-        public void RegisterSubContainer<T>(Action<IScopeRegistration> subContainer)
-        {
-            var newSubContainer = new Container(_bindedGameObject, _installerType);
-            _subContainers.Add(newSubContainer);
-            subContainer?.Invoke(newSubContainer);
         }
     }
 

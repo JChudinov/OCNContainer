@@ -29,7 +29,7 @@ namespace OCNContainer.InternalData
         {
             _participants.Remove(participant);
         }
-
+        
         public static void StartLifecycle()
         {
             b_EngineStartPhaseBegin = true;
@@ -37,6 +37,11 @@ namespace OCNContainer.InternalData
             foreach (var bindingPhaseParticipant in _bindingPhaseParticipants)
             {
                 bindingPhaseParticipant.InstallBindingsPhase();
+            }
+
+            foreach (var containerLifecycle in _participants)
+            {
+                containerLifecycle.InstanceCreationPhase();   
             }
 
             foreach (var containerLifecycle in _participants)

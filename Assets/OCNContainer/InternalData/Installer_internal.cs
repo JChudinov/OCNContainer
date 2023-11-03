@@ -8,7 +8,7 @@ namespace OCNContainer
     {
         private Container _container;
 
-        protected IScopeRegistration Container_internal
+        private IScopeRegistration Container_internal
         {
             get
             {
@@ -51,7 +51,12 @@ namespace OCNContainer
 
             _container.UpdatePhase();
         }
-        
+
+        void ILifecycleParticipant.InstanceCreationPhase()
+        {
+            (_container as ILifecycleParticipant).InstanceCreationPhase();
+        }
+
         void ILifecycleParticipant.ScopeResolvePhase()
         {
             (_container as ILifecycleParticipant).ScopeResolvePhase();   

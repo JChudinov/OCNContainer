@@ -1,11 +1,12 @@
 ﻿using System;
+using UnityEngine;
 
 namespace OCNContainer.InternalData
 {
     public class RegistrationData
     {
         public Type CurrentType { get; private set; }
-        public object Obj => _obj == null ? _creationMethod.Invoke() : _obj;
+        public object Obj => _obj ??= _creationMethod();
         public bool IsLazy { get; private set; } = false;
         public bool IsAlreadyRegisteredInGameCycle { get; private set; } = false;
         public bool RegisteredFromImplementation { get; private set; }
@@ -14,77 +15,69 @@ namespace OCNContainer.InternalData
         private object _obj;
         private Func<object> _creationMethod;
 
-        private RegistrationData()
+        public void CreateObject()
         {
+            if (IsLazy) return;
             
-        }
-        
-        private RegistrationData(Type type, bool registeredFromImplementation, bool isLazy = false, bool isFacade = false)
-        {
-            CurrentType = type;
-            RegisteredFromImplementation = registeredFromImplementation;
-            IsLazy = isLazy;
-            IsFacade = isFacade;
-        }
-
-        private RegistrationData(Type type, object instance, bool registeredFromImplementation, bool isFacade = false)
-        {
-            CurrentType = type;
-            Obj = instance;
-            RegisteredFromImplementation = registeredFromImplementation;
-            IsLazy = false;
-            IsFacade = isFacade;
+            if (_obj == null)
+            {
+                _obj = _creationMethod();
+            }
+            else
+            {
+                Debug.LogError($"Trying to create multiple objects of type {CurrentType}");
+            }
         }
 
-        public static RegistrationData CreateFromImplementationAsSingle(Type type)
+        public static RegistrationData CreateFromImplementationAsSingle<T>() where T : class, new()
         {
             return new RegistrationData()
             {
-                CurrentType = type,
+                CurrentType = typeof(T),
                 IsAlreadyRegisteredInGameCycle = false,
                 IsFacade = false,
                 IsLazy = false,
-                Obj = null,
-                RegisteredFromImplementation = true
+                RegisteredFromImplementation = true,
+                _creationMethod = () => new T()
             };
         }
 
-        public static RegistrationData CreateFromInterfaceAsSingle(Type type)
+        public static RegistrationData CreateFromInterfaceAsSingle<T>() where T : class, new()
         {
             return new RegistrationData()
             {
-                CurrentType = type,
+                CurrentType = typeof(T),
                 IsAlreadyRegisteredInGameCycle = false,
                 IsFacade = false,
                 IsLazy = false,
-                Obj = null,
-                RegisteredFromImplementation = false
+                RegisteredFromImplementation = false,
+                _creationMethod = () => new T()
             };
         }
 
-        public static RegistrationData CreateFromImplementationWithInstance(Type type, object obj)
+        public static RegistrationData CreateFromImplementationWithInstance<T>(object obj)
         {
             return new RegistrationData()
             {
-                CurrentType = type,
+                CurrentType = typeof(T),
                 IsAlreadyRegisteredInGameCycle = false,
                 IsFacade = false,
                 IsLazy = false,
-                Obj = obj,
-                RegisteredFromImplementation = true
+                RegisteredFromImplementation = true,
+                _creationMethod = () => obj
             };
         }
 
-        public static RegistrationData CreateFromInterfaceWithInstance(Type type, object obj)
+        public static RegistrationData CreateFromInterfaceWithInstance<T>(object obj)
         {
             return new RegistrationData()
             {
-                CurrentType = type,
+                CurrentType = typeof(T),
                 IsAlreadyRegisteredInGameCycle = false,
                 IsFacade = false,
                 IsLazy = false,
-                Obj = obj,
-                RegisteredFromImplementation = false
+                RegisteredFromImplementation = false,
+                _creationMethod = () => obj
             };
         }
     }

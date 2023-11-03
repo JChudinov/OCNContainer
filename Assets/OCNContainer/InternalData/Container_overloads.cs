@@ -5,12 +5,6 @@ namespace OCNContainer.InternalData
 {
     public partial class Container : IScopeRegistration
     {
-        
-        void IScopeRegistration.Register<T1>()
-        {
-            Register_Internal<T1>();
-        }
-
         void IScopeRegistration.Register<T1, T2>()
         {
             Register_Internal<T1>();
@@ -594,7 +588,7 @@ namespace OCNContainer.InternalData
             RegisterFromInstance_Internal(instance1);
             RegisterFromInstance_Internal(instance2);
         }
-
+        
         void IScopeRegistration.RegisterFromInstance<T1, T2, T3>(T1 instance1, T2 instance2, T3 instance3)
         {
             RegisterFromInstance_Internal(instance1);
@@ -784,28 +778,23 @@ namespace OCNContainer.InternalData
             RegisterFromInstance_Internal(instance14);
             RegisterFromInstance_Internal(instance15);
         }
-        
-        void IScopeRegistration.Bind<TImplementation, TInterface>(bool isLazy)
-        {
-            Bind_Internal<TImplementation, TInterface>();
-        }
-        
+
         void IScopeRegistration.Bind<TImplementation, TInterface1, TInterface2>(bool isLazy)
         {
-            Bind_Internal<TImplementation, TInterface1>();
+            Bind_Internal<TImplementation, TInterface1>(true);
             Bind_Internal<TImplementation, TInterface2>();
         }
 
         void IScopeRegistration.Bind<TImplementation, TInterface1, TInterface2, TInterface3>(bool isLazy)
         {
-            Bind_Internal<TImplementation, TInterface1>();
+            Bind_Internal<TImplementation, TInterface1>(true);
             Bind_Internal<TImplementation, TInterface2>();
             Bind_Internal<TImplementation, TInterface3>();
         }
 
         void IScopeRegistration.Bind<TImplementation, TInterface1, TInterface2, TInterface3, TInterface4>(bool isLazy)
         {
-            Bind_Internal<TImplementation, TInterface1>();
+            Bind_Internal<TImplementation, TInterface1>(true);
             Bind_Internal<TImplementation, TInterface2>();
             Bind_Internal<TImplementation, TInterface3>();
             Bind_Internal<TImplementation, TInterface4>();
@@ -813,35 +802,31 @@ namespace OCNContainer.InternalData
 
         void IScopeRegistration.Bind<TImplementation, TInterface1, TInterface2, TInterface3, TInterface4, TInterface5>(bool isLazy)
         {
-            Bind_Internal<TImplementation, TInterface1>();
+            Bind_Internal<TImplementation, TInterface1>(true);
             Bind_Internal<TImplementation, TInterface2>();
             Bind_Internal<TImplementation, TInterface3>();
             Bind_Internal<TImplementation, TInterface4>();
             Bind_Internal<TImplementation, TInterface5>();
 
         }
-
-        void IScopeRegistration.BindFromInstance<TImplementation, TInterface>(TImplementation instance)
-        {
-            BindFromInstance_Internal<TImplementation, TInterface>(instance);
-        }
+        
 
         void IScopeRegistration.BindFromInstance<TImplementation, TInterface1, TInterface2>(TImplementation instance)
         {
-            BindFromInstance_Internal<TImplementation, TInterface1>(instance);
+            BindFromInstance_Internal<TImplementation, TInterface1>(instance, true);
             BindFromInstance_Internal<TImplementation, TInterface2>(instance);
         }
 
         void IScopeRegistration.BindFromInstance<TImplementation, TInterface1, TInterface2, TInterface3>(TImplementation instance)
         {
-            BindFromInstance_Internal<TImplementation, TInterface1>(instance);
+            BindFromInstance_Internal<TImplementation, TInterface1>(instance, true);
             BindFromInstance_Internal<TImplementation, TInterface2>(instance);
             BindFromInstance_Internal<TImplementation, TInterface3>(instance);
         }
 
         void IScopeRegistration.BindFromInstance<TImplementation, TInterface1, TInterface2, TInterface3, TInterface4>(TImplementation instance)
         {
-            BindFromInstance_Internal<TImplementation, TInterface1>(instance);
+            BindFromInstance_Internal<TImplementation, TInterface1>(instance, true);
             BindFromInstance_Internal<TImplementation, TInterface2>(instance);
             BindFromInstance_Internal<TImplementation, TInterface3>(instance);
             BindFromInstance_Internal<TImplementation, TInterface4>(instance);
@@ -849,7 +834,7 @@ namespace OCNContainer.InternalData
 
         void IScopeRegistration.BindFromInstance<TImplementation, TInterface1, TInterface2, TInterface3, TInterface4, TInterface5>(TImplementation instance)
         {
-            BindFromInstance_Internal<TImplementation, TInterface1>(instance);
+            BindFromInstance_Internal<TImplementation, TInterface1>(instance, true);
             BindFromInstance_Internal<TImplementation, TInterface2>(instance);
             BindFromInstance_Internal<TImplementation, TInterface3>(instance);
             BindFromInstance_Internal<TImplementation, TInterface4>(instance);
