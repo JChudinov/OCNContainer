@@ -18,7 +18,7 @@ namespace OCNContainer
                 }
                 else
                 {
-                    _container = new Container(gameObject, this.GetType());
+                    _container = new Container(gameObject, this.GetType(), true);
                     return _container;
                 }
             }

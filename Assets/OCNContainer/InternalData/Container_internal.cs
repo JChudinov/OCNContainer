@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace OCNContainer.InternalData
 {
-    public partial class Container : ILifecycleParticipant, IScope, IScopeRegistration
+    public partial class Container : ILifecycleParticipant, IScope, IScopeRegistration, IFacadeSettable
     {
         private readonly Dictionary<Type, object> _registrationDataDictionary = new();
         private readonly Dictionary<Type, Type> _interfaceToTypeDictionary = new();
@@ -16,17 +16,24 @@ namespace OCNContainer.InternalData
         private readonly List<IInitializable> _awakeablePool = new();
         private readonly List<ISubscribable> _subscribablePool = new();
 
+        private RegistrationData _facadeRegistrationData;
+
+        //for SubContainers only
+        private Type _facadeExpectedType;
+
         #region Debug
 
         private string DebugInformationString => $"in Installer: \"{_installerType}\" on GameObject: \"{_bindedGameObject.name}\"";
         private GameObject _bindedGameObject;
         private Type _installerType;
+        private bool _isCoreContainer;
 
         #endregion
 
 
-        public Container(GameObject bindedGameObject, Type installerType)
+        public Container(GameObject bindedGameObject, Type installerType, bool isCoreContainer)
         {
+            _isCoreContainer = isCoreContainer;
             _bindedGameObject = bindedGameObject;
             _installerType = installerType;
 
@@ -38,7 +45,7 @@ namespace OCNContainer.InternalData
 
         private void RegisterSubContainer_Internal(Action<IScopeRegistration> subContainer)
         {
-            var newSubContainer = new Container(_bindedGameObject, _installerType);
+            var newSubContainer = new Container(_bindedGameObject, _installerType, false);
             _subContainers.Add(newSubContainer);
             subContainer?.Invoke(newSubContainer);
         }
@@ -52,7 +59,7 @@ namespace OCNContainer.InternalData
                 return;
             }
 
-            var registrationData = RegistrationData.CreateFromImplementationAsSingle<T>();
+            var registrationData = RegistrationData.CreateFromImplementationAsSingle<T>(this);
 
             if (_registrationDataDictionary.TryAdd(typeof(T), registrationData))
             {
@@ -73,12 +80,11 @@ namespace OCNContainer.InternalData
                 return;
             }
 
-            var registrationData = RegistrationData.CreateFromImplementationWithInstance<T>(instance);
+            var registrationData = RegistrationData.CreateFromImplementationWithInstance<T>(this, instance);
 
             if (!_registrationDataDictionary.TryAdd(typeof(T), registrationData))
             {
-                Debug.LogError(
-                    $"Type: {typeof(T)} already registered " + DebugInformationString);
+                Debug.LogError($"Type: {typeof(T)} already registered " + DebugInformationString);
             }
         }
 
@@ -98,7 +104,7 @@ namespace OCNContainer.InternalData
             {
                 if (b_firstInMultiBindIteration)
                 {
-                    var registrationData = RegistrationData.CreateFromInterfaceAsSingle<TImplementation>();
+                    var registrationData = RegistrationData.CreateFromInterfaceAsSingle<TImplementation>(this);
 
                     if (_registrationDataDictionary.TryAdd(typeof(TImplementation), registrationData))
                     {
@@ -130,22 +136,20 @@ namespace OCNContainer.InternalData
             {
                 if (b_firstInMultiBindIteration)
                 {
-                    var registrationData = RegistrationData.CreateFromInterfaceWithInstance<TImplementation>(instance);
+                    var registrationData = RegistrationData.CreateFromInterfaceWithInstance<TImplementation>(this, instance);
                     if (_registrationDataDictionary.TryAdd(typeof(TImplementation), registrationData))
                     {
                         //_creationPhaseList.Add(registrationData);
                     }
                     else
                     {
-                        Debug.LogError(
-                            $"Type {typeof(TImplementation)} already registered " + DebugInformationString);
+                        Debug.LogError($"Type {typeof(TImplementation)} already registered " + DebugInformationString);
                     }
                 }
             }
             else
             {
-                Debug.LogError(
-                    $"Type {typeof(TInterface)} already registered as interface " + DebugInformationString);
+                Debug.LogError($"Type {typeof(TInterface)} already registered as interface " + DebugInformationString);
             }
         }
 
@@ -242,6 +246,28 @@ namespace OCNContainer.InternalData
             if (obj is ISubscribable subscribable)
             {
                 _subscribablePool.Add(subscribable);
+            }
+        }
+
+        void IFacadeSettable.SetFacade(RegistrationData registrationData)
+        {
+            if (_facadeRegistrationData != null)
+            {
+                
+            }
+            
+            if (_facadeExpectedType != null)
+            {
+                if (_facadeExpectedType == registrationData.CurrentType)
+                {
+                    _facadeRegistrationData = registrationData;
+                }
+                else
+                {
+                    Debug.LogError(
+                        $"Facade type \"{_facadeRegistrationData.CurrentType}\" " +
+                        $"doesn't match Facade expected type \"{_facadeExpectedType}\" " + DebugInformationString);
+                }
             }
         }
     }
