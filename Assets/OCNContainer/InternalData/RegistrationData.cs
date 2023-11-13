@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace OCNContainer.InternalData
 {
-    public class RegistrationData : IRegistrationLazyFacadeState
+    public class RegistrationData : IRegistrationBuilder, IRegistrationFromInstanceBuilder
     {
         public Type CurrentType { get; private set; }
         public object Obj => _obj ??= _objFactoryMethod();
@@ -34,17 +34,19 @@ namespace OCNContainer.InternalData
                 Debug.LogError($"Trying to create multiple objects of type {CurrentType}");
             }
         }
-        
-        void IRegistrationFacadeState.SetFacade()
+
+        void IRegistrationFacadeBuilder.AsFacade()
         {
             _facadeSettable.SetFacade(this);
             IsFacade = true;
         }
 
-        void IRegistrationLazyState.SetLazy()
+        void IRegistrationLazyStateBuilder.AsLazy()
         {
-            throw new NotImplementedException();
+            IsLazy = true;
         }
+        
+        
 
         public static RegistrationData CreateFromImplementationAsSingle<T>(IFacadeSettable facadeSettable) where T : class, new()
         {
@@ -112,18 +114,22 @@ namespace OCNContainer.InternalData
 
 namespace OCNContainer.InternalData
 {
-    public interface IRegistrationLazyState
+    public interface IRegistrationFacadeBuilder
     {
-        public void SetLazy();
+        public void AsFacade();
     }
 
-    public interface IRegistrationFacadeState
+    public interface IRegistrationLazyStateBuilder
     {
-        public void SetFacade();
+        public void AsLazy();
     }
+    
     //Builder for Lazy or Facade types of registrations
-    public interface IRegistrationLazyFacadeState : IRegistrationFacadeState, IRegistrationLazyState
+    public interface IRegistrationBuilder : IRegistrationFacadeBuilder, IRegistrationLazyStateBuilder
     {
-        
+    }
+    
+    public interface IRegistrationFromInstanceBuilder : IRegistrationFacadeBuilder
+    {
     }
 }

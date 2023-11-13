@@ -10,7 +10,11 @@
 
         public void StartPhase();
     }
-    
+
+    public interface IContainerLifecycleParticipant : ILifecycleParticipant
+    {
+        public RegistrationData FacadeRegistrationData { get; }
+    }
     public interface IInstallBindingPhaseParticipant
     {
         public void InstallBindingsPhase();

@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using OCNContainer.InternalData;
+using OCNContainer.InternalData.DebugAndErrorHandling;
 using UnityEngine;
 
 namespace OCNContainer.InternalData
 {
-    public partial class Container : ILifecycleParticipant, IScope, IScopeRegistration, IFacadeSettable
+    public partial class Container : IContainerLifecycleParticipant, IScope, IScopeRegistration, IFacadeSettable
     {
         private readonly Dictionary<Type, object> _registrationDataDictionary = new();
         private readonly Dictionary<Type, Type> _interfaceToTypeDictionary = new();
@@ -17,13 +18,16 @@ namespace OCNContainer.InternalData
         private readonly List<ISubscribable> _subscribablePool = new();
 
         private RegistrationData _facadeRegistrationData;
+        RegistrationData IContainerLifecycleParticipant.FacadeRegistrationData => _facadeRegistrationData;
 
         //for SubContainers only
         private Type _facadeExpectedType;
 
+
         #region Debug
 
-        private string DebugInformationString => $"in Installer: \"{_installerType}\" on GameObject: \"{_bindedGameObject.name}\"";
+        private string DebugInformationString => ContainerDebugUtilities.GetProperDebugData(_installerType, _bindedGameObject);
+        //$"in Installer: \"{_installerType.Name}\" on GameObject: \"{_bindedGameObject.name}\"";
         private GameObject _bindedGameObject;
         private Type _installerType;
         private bool _isCoreContainer;
@@ -31,32 +35,55 @@ namespace OCNContainer.InternalData
         #endregion
 
 
-        public Container(GameObject bindedGameObject, Type installerType, bool isCoreContainer)
+        public Container(GameObject bindedGameObject, Type installerType, bool isCoreContainer, Type facadeExpectedType = null)
         {
             _isCoreContainer = isCoreContainer;
             _bindedGameObject = bindedGameObject;
             _installerType = installerType;
-
+            _facadeExpectedType = facadeExpectedType;
             foreach (var awakeable in _awakeablePool)
             {
                 awakeable.Initialize(this);
             }
         }
 
-        private void RegisterSubContainer_Internal(Action<IScopeRegistration> subContainer)
+        void IFacadeSettable.SetFacade(RegistrationData registrationData)
         {
-            var newSubContainer = new Container(_bindedGameObject, _installerType, false);
+            if (_facadeRegistrationData != null)
+            {
+                Debug.LogError("Multiple Facade registrations found " + DebugInformationString);
+                return;
+            }
+
+            if (_facadeExpectedType != null)
+            {
+                if (_facadeExpectedType == registrationData.CurrentType)
+                {
+                    _facadeRegistrationData = registrationData;
+                }
+                else
+                {
+                    Debug.LogError(
+                        $"Facade type \"{registrationData.CurrentType.Name}\" " +
+                        $"doesn't match Facade expected type \"{_facadeExpectedType.Name}\" " + DebugInformationString);
+                }
+            }
+        }
+
+        private void RegisterSubContainer_Internal<T>(Action<IScopeRegistration> subContainer)
+        {
+            var newSubContainer = new Container(_bindedGameObject, _installerType, false, typeof(T));
             _subContainers.Add(newSubContainer);
             subContainer?.Invoke(newSubContainer);
         }
 
-        private void Register_Internal<T>() where T : class, new()
+        private IRegistrationBuilder Register_Internal<T>() where T : class, new()
         {
             if (typeof(T).IsSubclassOf(typeof(MonoBehaviour)))
             {
                 Debug.LogError(
                     $"Unable to Register subclass of MonoBehaviour: \"{typeof(T)}\" without providing and instance " + DebugInformationString);
-                return;
+                return new RegistrationBuilderNullHandler();
             }
 
             var registrationData = RegistrationData.CreateFromImplementationAsSingle<T>(this);
@@ -64,11 +91,13 @@ namespace OCNContainer.InternalData
             if (_registrationDataDictionary.TryAdd(typeof(T), registrationData))
             {
                 _creationPhaseList.Add(registrationData);
+                return registrationData;
             }
             else
             {
                 Debug.LogError(
                     $"Type: {typeof(T).Name} already registered " + DebugInformationString);
+                return new RegistrationBuilderNullHandler();
             }
         }
 
@@ -154,7 +183,7 @@ namespace OCNContainer.InternalData
         }
 
 
-        public T Resolve<T>() where T : class
+        private T Resolve_Internal<T>() where T : class
         {
             Type typeToResolve = typeof(T);
             bool resolvedFromInterface = false;
@@ -201,32 +230,32 @@ namespace OCNContainer.InternalData
 
 //TODO:
 //perhaps, both return statements should be logged as different errors
-        private bool TryFindRegistrationData(Type type, out RegistrationData validRegistrationData)
+        private bool TryFindRegistrationData(Type type, out RegistrationData validRegistration)
         {
             if (_registrationDataDictionary.TryGetValue(type, out var registrationData_unspecified))
             {
                 if (registrationData_unspecified is not RegistrationData registrationData)
                 {
-                    validRegistrationData = null;
+                    validRegistration = null;
                     return false;
                 }
 
-                validRegistrationData = registrationData;
+                validRegistration = registrationData;
                 return true;
             }
 
-            validRegistrationData = null;
+            validRegistration = null;
             return false;
         }
 
-        private void AddToFullGameCycle(RegistrationData registrationData)
+        private void AddToFullGameCycle(RegistrationData registration)
         {
-            if (registrationData.IsLazy && registrationData.Obj is IInitializable or IStartable)
+            if (registration.IsLazy && registration.Obj is IInitializable or IStartable)
             {
                 Debug.LogError("Trying to add Lazy binding of class ");
             }
 
-            var obj = registrationData.Obj;
+            var obj = registration.Obj;
 
             if (obj is ITickable updateable)
             {
@@ -249,25 +278,17 @@ namespace OCNContainer.InternalData
             }
         }
 
-        void IFacadeSettable.SetFacade(RegistrationData registrationData)
+        private void AddRegistrationDataFromSubContainer(RegistrationData facadeRegistrationData)
         {
-            if (_facadeRegistrationData != null)
+            if (facadeRegistrationData == null)
             {
-                
+                Debug.LogError($"Cant register null instance of facade from subContainer " + DebugInformationString);
+                return;
             }
-            
-            if (_facadeExpectedType != null)
+
+            if (!_registrationDataDictionary.TryAdd(facadeRegistrationData.CurrentType, facadeRegistrationData))
             {
-                if (_facadeExpectedType == registrationData.CurrentType)
-                {
-                    _facadeRegistrationData = registrationData;
-                }
-                else
-                {
-                    Debug.LogError(
-                        $"Facade type \"{_facadeRegistrationData.CurrentType}\" " +
-                        $"doesn't match Facade expected type \"{_facadeExpectedType}\" " + DebugInformationString);
-                }
+                Debug.LogError($"Type: {facadeRegistrationData.CurrentType.Name} already registered " + DebugInformationString);
             }
         }
     }

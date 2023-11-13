@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace OCNContainer.InternalData
 {
-    public partial class Container : ILifecycleParticipant, IScopeRegistration
+    public partial class Container
     {
         public event Action OnStartCycleComplete;
 
-        private List<ILifecycleParticipant> _subContainers = new();
+        private readonly List<IContainerLifecycleParticipant> _subContainers = new();
         
         void ILifecycleParticipant.InstanceCreationPhase()
         {
@@ -20,6 +21,16 @@ namespace OCNContainer.InternalData
             {
                 registrationData.CreateObject();
                 AddToFullGameCycle(registrationData);
+            }
+
+            foreach (var subContainer in _subContainers)
+            {
+                AddRegistrationDataFromSubContainer(subContainer.FacadeRegistrationData);
+            }
+
+            if (_isCoreContainer == false && _facadeRegistrationData == null)
+            {
+                Debug.LogError($"No Facade of type {_facadeExpectedType.Name} found in SubContainer " + DebugInformationString);
             }
         }
         

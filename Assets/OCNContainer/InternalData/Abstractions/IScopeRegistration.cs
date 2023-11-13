@@ -5,7 +5,7 @@ namespace OCNContainer
 {
     public partial interface IScopeRegistration
     {
-        public void Register<T1>() where T1 : class, new();
+        public IRegistrationBuilder Register<T1>() where T1 : class, new();
         
         public void RegisterFromInstance<T1>( T1 instance1) where T1 : class;
         
@@ -20,6 +20,6 @@ namespace OCNContainer
     /// </summary>
     public interface IFacadeSettable
     {
-        public void SetFacade(RegistrationData registrationData);
+        public void SetFacade(RegistrationData registration);
     }
 }

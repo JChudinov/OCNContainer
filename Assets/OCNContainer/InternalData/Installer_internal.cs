@@ -7,7 +7,7 @@ namespace OCNContainer
     public abstract partial class Installer : MonoBehaviour, ILifecycleParticipant, IInstallBindingPhaseParticipant
     {
         private Container _container;
-
+        
         private IScopeRegistration Container_internal
         {
             get
@@ -51,6 +51,8 @@ namespace OCNContainer
 
             _container.UpdatePhase();
         }
+
+        
 
         void ILifecycleParticipant.InstanceCreationPhase()
         {
