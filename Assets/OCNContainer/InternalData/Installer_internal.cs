@@ -7,8 +7,8 @@ namespace OCNContainer
     public abstract partial class Installer : MonoBehaviour, ILifecycleParticipant, IInstallBindingPhaseParticipant
     {
         private Container _container;
-
-        protected IScopeRegistration Container_internal
+        
+        private IScopeRegistration Container_internal
         {
             get
             {
@@ -18,7 +18,7 @@ namespace OCNContainer
                 }
                 else
                 {
-                    _container = new Container(gameObject, this.GetType());
+                    _container = new Container(gameObject, this.GetType(), true);
                     return _container;
                 }
             }
@@ -51,7 +51,14 @@ namespace OCNContainer
 
             _container.UpdatePhase();
         }
+
         
+
+        void ILifecycleParticipant.InstanceCreationPhase()
+        {
+            (_container as ILifecycleParticipant).InstanceCreationPhase();
+        }
+
         void ILifecycleParticipant.ScopeResolvePhase()
         {
             (_container as ILifecycleParticipant).ScopeResolvePhase();   

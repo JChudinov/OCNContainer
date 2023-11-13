@@ -1,88 +1,135 @@
 ﻿using System;
+using UnityEngine;
 
 namespace OCNContainer.InternalData
 {
-    public class RegistrationData
+    public class RegistrationData : IRegistrationBuilder, IRegistrationFromInstanceBuilder
     {
-        public Type CurrentType;
-        public object Obj;
-        public bool IsLazy = false;
-        public bool IsAlreadyRegisteredInGameCycle = false;
-        public bool RegisteredFromImplementation;
-        public bool IsFacade = false;
+        public Type CurrentType { get; private set; }
+        public object Obj => _obj ??= _objFactoryMethod();
+        public bool IsLazy { get; private set; } = false;
+        public bool IsAlreadyRegisteredInGameCycle { get; private set; } = false;
+        public bool RegisteredFromImplementation { get; private set; }
+        public bool IsFacade { get; private set; } = false;
 
-        private RegistrationData()
+        private object _obj;
+        private Func<object> _objFactoryMethod;
+
+        private Container currentContainer;
+        private static IFacadeSettable _facadeSettable;
+        
+        /// <summary>
+        /// Called on Object creation lifecycle phase
+        /// </summary>
+        public void CreateObject()
         {
+            if (IsLazy) return;
             
+            if (_obj == null)
+            {
+                _obj = _objFactoryMethod();
+            }
+            else
+            {
+                Debug.LogError($"Trying to create multiple objects of type {CurrentType}");
+            }
+        }
+
+        void IRegistrationFacadeBuilder.AsFacade()
+        {
+            _facadeSettable.SetFacade(this);
+            IsFacade = true;
+        }
+
+        void IRegistrationLazyStateBuilder.AsLazy()
+        {
+            IsLazy = true;
         }
         
-        private RegistrationData(Type type, bool registeredFromImplementation, bool isLazy = false, bool isFacade = false)
-        {
-            CurrentType = type;
-            RegisteredFromImplementation = registeredFromImplementation;
-            IsLazy = isLazy;
-            IsFacade = isFacade;
-        }
+        
 
-        private RegistrationData(Type type, object instance, bool registeredFromImplementation, bool isFacade = false)
+        public static RegistrationData CreateFromImplementationAsSingle<T>(IFacadeSettable facadeSettable) where T : class, new()
         {
-            CurrentType = type;
-            Obj = instance;
-            RegisteredFromImplementation = registeredFromImplementation;
-            IsLazy = false;
-            IsFacade = isFacade;
-        }
-
-        public static RegistrationData CreateFromImplementationAsSingle(Type type)
-        {
+            _facadeSettable = facadeSettable;
+            
             return new RegistrationData()
             {
-                CurrentType = type,
+                CurrentType = typeof(T),
                 IsAlreadyRegisteredInGameCycle = false,
                 IsFacade = false,
                 IsLazy = false,
-                Obj = null,
-                RegisteredFromImplementation = true
+                RegisteredFromImplementation = true,
+                _objFactoryMethod = () => new T()
             };
         }
 
-        public static RegistrationData CreateFromInterfaceAsSingle(Type type)
+        public static RegistrationData CreateFromInterfaceAsSingle<T>(IFacadeSettable facadeSettable) where T : class, new()
         {
+            _facadeSettable = facadeSettable;
+            
             return new RegistrationData()
             {
-                CurrentType = type,
+                CurrentType = typeof(T),
                 IsAlreadyRegisteredInGameCycle = false,
                 IsFacade = false,
                 IsLazy = false,
-                Obj = null,
-                RegisteredFromImplementation = false
+                RegisteredFromImplementation = false,
+                _objFactoryMethod = () => new T()
             };
         }
 
-        public static RegistrationData CreateFromImplementationWithInstance(Type type, object obj)
+        public static RegistrationData CreateFromImplementationWithInstance<T>(IFacadeSettable facadeSettable, object obj)
         {
+            _facadeSettable = facadeSettable;
+            
             return new RegistrationData()
             {
-                CurrentType = type,
+                CurrentType = typeof(T),
                 IsAlreadyRegisteredInGameCycle = false,
                 IsFacade = false,
                 IsLazy = false,
-                Obj = obj,
-                RegisteredFromImplementation = true
+                RegisteredFromImplementation = true,
+                _objFactoryMethod = () => obj
             };
         }
 
-        public static RegistrationData CreateFromInterfaceWithInstance(Type type, object obj)
+        public static RegistrationData CreateFromInterfaceWithInstance<T>(IFacadeSettable facadeSettable, object obj)
         {
+            _facadeSettable = facadeSettable;
+            
             return new RegistrationData()
             {
-                CurrentType = type,
+                CurrentType = typeof(T),
                 IsAlreadyRegisteredInGameCycle = false,
                 IsFacade = false,
                 IsLazy = false,
-                Obj = obj,
-                RegisteredFromImplementation = false
+                RegisteredFromImplementation = false,
+                _objFactoryMethod = () => obj
             };
         }
+
+        
+    }
+}
+
+namespace OCNContainer.InternalData
+{
+    public interface IRegistrationFacadeBuilder
+    {
+        public void AsFacade();
+    }
+
+    public interface IRegistrationLazyStateBuilder
+    {
+        public void AsLazy();
+    }
+    
+    //Builder for Lazy or Facade types of registrations
+    public interface IRegistrationBuilder : IRegistrationFacadeBuilder, IRegistrationLazyStateBuilder
+    {
+    }
+    
+    public interface IRegistrationFromInstanceBuilder : IRegistrationFacadeBuilder
+    {
     }
 }
