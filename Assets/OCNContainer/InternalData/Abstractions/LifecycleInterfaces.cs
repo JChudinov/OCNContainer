@@ -9,6 +9,8 @@
         public void EventSubscriptionsPhase();
 
         public void StartPhase();
+
+        public void UpdatePhase();
     }
 
     public interface IContainerLifecycleParticipant : ILifecycleParticipant

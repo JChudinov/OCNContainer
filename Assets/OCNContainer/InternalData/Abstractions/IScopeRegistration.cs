@@ -22,4 +22,9 @@ namespace OCNContainer
     {
         public void SetFacade(RegistrationData registration);
     }
+
+    public interface IParentContainerLookupable
+    {
+        public bool TryFindRegistration<T>(out T foundObject) where T : class;
+    }
 }

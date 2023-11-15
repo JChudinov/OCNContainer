@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace OCNContainer.InternalData
 {
-    public partial class Container : IContainerLifecycleParticipant, IScope, IScopeRegistration, IFacadeSettable
+    public partial class Container : IContainerLifecycleParticipant, IScope, IScopeRegistration, IFacadeSettable, IParentContainerLookupable
     {
         private readonly Dictionary<Type, object> _registrationDataDictionary = new();
         private readonly Dictionary<Type, Type> _interfaceToTypeDictionary = new();
@@ -26,21 +26,21 @@ namespace OCNContainer.InternalData
 
         #region Debug
 
-        private string DebugInformationString => ContainerDebugUtilities.GetProperDebugData(_installerType, _bindedGameObject);
+        private ContainerDebugInfo DebugInfo { get; }
+
         //$"in Installer: \"{_installerType.Name}\" on GameObject: \"{_bindedGameObject.name}\"";
-        private GameObject _bindedGameObject;
-        private Type _installerType;
         private bool _isCoreContainer;
 
         #endregion
 
 
-        public Container(GameObject bindedGameObject, Type installerType, bool isCoreContainer, Type facadeExpectedType = null)
+        public Container(GameObject bindedGameObject, Type installerType, IParentContainerLookupable parentContainer, bool isCoreContainer, Type facadeExpectedType = null)
         {
+            _parentContainer = parentContainer;
             _isCoreContainer = isCoreContainer;
-            _bindedGameObject = bindedGameObject;
-            _installerType = installerType;
             _facadeExpectedType = facadeExpectedType;
+            DebugInfo = new ContainerDebugInfo(installerType, bindedGameObject);
+
             foreach (var awakeable in _awakeablePool)
             {
                 awakeable.Initialize(this);
@@ -51,7 +51,11 @@ namespace OCNContainer.InternalData
         {
             if (_facadeRegistrationData != null)
             {
-                Debug.LogError("Multiple Facade registrations found " + DebugInformationString);
+                ContainerDebugUtilities.LogError(
+                    "Multiple Facade registrations found ",
+                    DebugInfo,
+                    registrationData.CurrentType,
+                    LoggingBypassMode.AlwaysLog);
                 return;
             }
 
@@ -63,16 +67,19 @@ namespace OCNContainer.InternalData
                 }
                 else
                 {
-                    Debug.LogError(
+                    ContainerDebugUtilities.LogError(
                         $"Facade type \"{registrationData.CurrentType.Name}\" " +
-                        $"doesn't match Facade expected type \"{_facadeExpectedType.Name}\" " + DebugInformationString);
+                        $"doesn't match Facade expected type \"{_facadeExpectedType.Name}\" ",
+                        DebugInfo,
+                        registrationData.CurrentType,
+                        LoggingBypassMode.AlwaysLog);
                 }
             }
         }
 
         private void RegisterSubContainer_Internal<T>(Action<IScopeRegistration> subContainer)
         {
-            var newSubContainer = new Container(_bindedGameObject, _installerType, false, typeof(T));
+            var newSubContainer = new Container(DebugInfo.BindedGameObject, DebugInfo.InstallerType, this, false, typeof(T));
             _subContainers.Add(newSubContainer);
             subContainer?.Invoke(newSubContainer);
         }
@@ -81,8 +88,11 @@ namespace OCNContainer.InternalData
         {
             if (typeof(T).IsSubclassOf(typeof(MonoBehaviour)))
             {
-                Debug.LogError(
-                    $"Unable to Register subclass of MonoBehaviour: \"{typeof(T)}\" without providing and instance " + DebugInformationString);
+                ContainerDebugUtilities.LogError(
+                    $"Unable to Register subclass of MonoBehaviour: \"{typeof(T)}\" without providing and instance ",
+                    DebugInfo,
+                    typeof(T),
+                    LoggingBypassMode.AlwaysLog);
                 return new RegistrationBuilderNullHandler();
             }
 
@@ -95,8 +105,11 @@ namespace OCNContainer.InternalData
             }
             else
             {
-                Debug.LogError(
-                    $"Type: {typeof(T).Name} already registered " + DebugInformationString);
+                ContainerDebugUtilities.LogError(
+                    $"Type: {typeof(T).Name} already registered ",
+                    DebugInfo,
+                    typeof(T),
+                    LoggingBypassMode.AlwaysLog);
                 return new RegistrationBuilderNullHandler();
             }
         }
@@ -105,7 +118,11 @@ namespace OCNContainer.InternalData
         {
             if (instance == null)
             {
-                Debug.LogError($"Cant register null instance of type: \"{typeof(T).Name}\"" + DebugInformationString);
+                ContainerDebugUtilities.LogError(
+                    $"Cant register null instance of type: \"{typeof(T).Name}\" ",
+                    DebugInfo,
+                    typeof(T),
+                    LoggingBypassMode.AlwaysLog);
                 return;
             }
 
@@ -113,7 +130,11 @@ namespace OCNContainer.InternalData
 
             if (!_registrationDataDictionary.TryAdd(typeof(T), registrationData))
             {
-                Debug.LogError($"Type: {typeof(T)} already registered " + DebugInformationString);
+                ContainerDebugUtilities.LogError(
+                    $"Type: {typeof(T)} already registered ",
+                    DebugInfo,
+                    typeof(T),
+                    LoggingBypassMode.AlwaysLog);
             }
         }
 
@@ -122,9 +143,11 @@ namespace OCNContainer.InternalData
         {
             if (typeof(TImplementation).IsSubclassOf(typeof(MonoBehaviour)))
             {
-                Debug.LogError(
-                    $"Unable to Register subclass of MonoBehaviour: \"{typeof(TImplementation)}\" without providing and instance" +
-                    DebugInformationString);
+                ContainerDebugUtilities.LogError(
+                    $"Unable to Register subclass of MonoBehaviour: \"{typeof(TImplementation)}\" without providing and instance",
+                    DebugInfo,
+                    typeof(TImplementation),
+                    LoggingBypassMode.AlwaysLog);
                 return;
             }
 
@@ -141,14 +164,21 @@ namespace OCNContainer.InternalData
                     }
                     else
                     {
-                        Debug.LogError(
-                            $"Type {typeof(TInterface)} is already registered while trying to bind interface " + DebugInformationString);
+                        ContainerDebugUtilities.LogError(
+                            $"Type \"{typeof(TImplementation)}\" is already registered while trying to bind interface ",
+                            DebugInfo,
+                            typeof(TImplementation),
+                            LoggingBypassMode.AlwaysLog);
                     }
                 }
             }
             else
             {
-                Debug.LogError($"Interface {typeof(TInterface)} already registered " + DebugInformationString);
+                ContainerDebugUtilities.LogError(
+                    $"Interface \"{typeof(TInterface)}\" already registered ",
+                    DebugInfo,
+                    typeof(TInterface),
+                    LoggingBypassMode.AlwaysLog);
             }
         }
 
@@ -157,7 +187,11 @@ namespace OCNContainer.InternalData
         {
             if (instance == null)
             {
-                Debug.LogError($"Cant register null instance of type: \"{typeof(TImplementation)}\"" + DebugInformationString);
+                ContainerDebugUtilities.LogError(
+                    $"Cant register null instance of type: \"{typeof(TImplementation)}\" ",
+                    DebugInfo,
+                    typeof(TImplementation),
+                    LoggingBypassMode.AlwaysLog);
                 return;
             }
 
@@ -172,20 +206,21 @@ namespace OCNContainer.InternalData
                     }
                     else
                     {
-                        Debug.LogError($"Type {typeof(TImplementation)} already registered " + DebugInformationString);
+                        Debug.LogError($"Type {typeof(TImplementation)} already registered " + DebugInfo);
                     }
                 }
             }
             else
             {
-                Debug.LogError($"Type {typeof(TInterface)} already registered as interface " + DebugInformationString);
+                Debug.LogError($"Type {typeof(TInterface)} already registered as interface " + DebugInfo);
             }
         }
 
 
-        private T Resolve_Internal<T>() where T : class
+        private T Resolve_Internal<T>(bool b_fromInternalContainerLookup = false, Type requesterType = null) where T : class
         {
             Type typeToResolve = typeof(T);
+            //TODO: revert it to "resolvedFromImplementation"
             bool resolvedFromInterface = false;
 
             if (_interfaceToTypeDictionary.TryGetValue(typeof(T), out Type relatedImplementation))
@@ -198,33 +233,85 @@ namespace OCNContainer.InternalData
             {
                 if (registrationData.Obj != null)
                 {
+                    //Searching Type was found found in a collection of concrete types, but it was registered as an interface in container
                     if (resolvedFromInterface == false && registrationData.RegisteredFromImplementation == false)
                     {
-                        Debug.LogError(
-                            $"Cant resolve concrete type \" {typeToResolve}\" as it was registered as interface " + DebugInformationString);
+                        if (requesterType == null)
+                        {
+                            Debug.LogError($"No Requester Type found while trying to search \"{typeToResolve}\"");
+                            return null;
+                        }
+                        
+                        if (b_fromInternalContainerLookup)
+                        {
+                            
+                            ContainerDebugUtilities.LogError(
+                                $"Cant resolve concrete type \" {typeof(T)}\"" +
+                                $" while resolving \"{requesterType}\" as it was registered as interface ",
+                                DebugInfo,
+                                typeToResolve,
+                                LoggingBypassMode.FirstOnType);
+                        }
+                        else
+                        {
+                            ContainerDebugUtilities.LogError(
+                                $"Cant resolve concrete type \" {typeof(T)}\" as it was registered as interface ",
+                                DebugInfo,
+                                typeof(T),
+                                LoggingBypassMode.FirstOnType);
+                        }
                         return null;
                     }
 
                     if (resolvedFromInterface == true && registrationData.RegisteredFromImplementation == true)
                     {
+                        //TODO: could this even happen?
                         Debug.LogError(
                             $"Interface: \"{typeof(T)}\" is not associated in container with type: \"{typeToResolve}\" " +
-                            DebugInformationString);
+                            DebugInfo);
+                        return null;
                     }
 
                     return registrationData.Obj as T;
                 }
                 else
                 {
-                    Debug.LogError($"Instance of type \"{typeToResolve}\" was not registered correctly " + DebugInformationString);
+                    ContainerDebugUtilities.LogError(
+                        $"Instance of type \"{typeToResolve}\" was not registered correctly ",
+                        DebugInfo,
+                        typeToResolve,
+                        LoggingBypassMode.AlwaysLog);
                     return null;
                 }
             }
+            // there is 2 possible ways to come here: from user Resolve and from child container lookup. In 1st scenario we would try to search
+            //dependency in parent containers and if no dep found -> Log error. 
             else
             {
-                Debug.LogError(
-                    $"Unable to retrieve proper registration data related for type: \"{typeToResolve.Name}\" " + DebugInformationString);
-                return null;
+                if (_parentContainer.TryFindRegistration(out T foundObject))
+                {
+                    return foundObject;
+                }
+                else
+                {
+                    if (b_fromInternalContainerLookup == false)
+                    {
+                        ContainerDebugUtilities.LogError(
+                            $"Unable to retrieve proper registration data related for type: \"{typeToResolve.Name}\" ",
+                            DebugInfo,
+                            typeToResolve,
+                            LoggingBypassMode.FirstOnType);
+                    }
+                    return null;
+                }
+                if (b_fromInternalContainerLookup)
+                {
+                    return null;
+                }
+                else
+                {
+                    
+                }
             }
         }
 
@@ -282,13 +369,18 @@ namespace OCNContainer.InternalData
         {
             if (facadeRegistrationData == null)
             {
-                Debug.LogError($"Cant register null instance of facade from subContainer " + DebugInformationString);
+                //TODO: perhaps should log it somehow, but cant message to LogUtilities due to no proper type in null RegistrationData
+                //Debug.LogError($"Cant register null instance of facade from subContainer " + DebugInformationString);
                 return;
             }
 
             if (!_registrationDataDictionary.TryAdd(facadeRegistrationData.CurrentType, facadeRegistrationData))
             {
-                Debug.LogError($"Type: {facadeRegistrationData.CurrentType.Name} already registered " + DebugInformationString);
+                ContainerDebugUtilities.LogError(
+                    $"Type: {facadeRegistrationData.CurrentType.Name} already registered ",
+                    DebugInfo,
+                    facadeRegistrationData.CurrentType,
+                    LoggingBypassMode.AlwaysLog);
             }
         }
     }

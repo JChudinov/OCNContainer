@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using OCNContainer.InternalData.DebugAndErrorHandling;
 using UnityEngine;
 
 namespace OCNContainer.InternalData
@@ -9,14 +10,15 @@ namespace OCNContainer.InternalData
         public event Action OnStartCycleComplete;
 
         private readonly List<IContainerLifecycleParticipant> _subContainers = new();
-        
+        private IParentContainerLookupable _parentContainer;
+
         void ILifecycleParticipant.InstanceCreationPhase()
         {
             foreach (var subContainer in _subContainers)
             {
                 subContainer.InstanceCreationPhase();
             }
-            
+
             foreach (var registrationData in _creationPhaseList)
             {
                 registrationData.CreateObject();
@@ -30,17 +32,21 @@ namespace OCNContainer.InternalData
 
             if (_isCoreContainer == false && _facadeRegistrationData == null)
             {
-                Debug.LogError($"No Facade of type {_facadeExpectedType.Name} found in SubContainer " + DebugInformationString);
+                ContainerDebugUtilities.LogError(
+                    $"No Facade of type {_facadeExpectedType.Name} found in SubContainer ",
+                    DebugInfo,
+                    _facadeExpectedType,
+                    LoggingBypassMode.FirstOnType);
             }
         }
-        
+
         void ILifecycleParticipant.ScopeResolvePhase()
         {
             foreach (var subContainer in _subContainers)
             {
                 subContainer.ScopeResolvePhase();
             }
-            
+
             foreach (var awakeable in _awakeablePool)
             {
                 awakeable.Initialize(this);
@@ -61,18 +67,33 @@ namespace OCNContainer.InternalData
             {
                 startable.Start();
             }
-            
+
             OnStartCycleComplete?.Invoke();
         }
 
-        public void UpdatePhase()
+        void ILifecycleParticipant.UpdatePhase()
         {
+            foreach (var subContainer in _subContainers)
+            {
+                subContainer.UpdatePhase();
+            }
+            
             foreach (var updateable in _updeablePool)
             {
                 updateable.Tick();
             }
         }
-    }
 
-    
+        bool IParentContainerLookupable.TryFindRegistration<T>(out T foundObject)
+        {
+            foundObject =  Resolve_Internal<T>(true, DebugInfo.InstallerType);
+
+            if (foundObject != null)
+            {
+                return true;
+            }
+
+            return false;
+        }
+    }
 }

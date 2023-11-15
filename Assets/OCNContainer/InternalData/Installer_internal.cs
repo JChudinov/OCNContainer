@@ -4,10 +4,11 @@ using UnityEngine;
 
 namespace OCNContainer
 {
-    public abstract partial class Installer : MonoBehaviour, ILifecycleParticipant, IInstallBindingPhaseParticipant
+    public abstract partial class Installer : MonoBehaviour, ILifecycleParticipant, IInstallBindingPhaseParticipant, IParentContainerLookupable
     {
         private Container _container;
-        
+        private IParentContainerLookupable _parentContainerLookupableImplementation;
+
         private IScopeRegistration Container_internal
         {
             get
@@ -18,7 +19,7 @@ namespace OCNContainer
                 }
                 else
                 {
-                    _container = new Container(gameObject, this.GetType(), true);
+                    _container = new Container(gameObject, this.GetType(), this, true);
                     return _container;
                 }
             }
@@ -49,7 +50,7 @@ namespace OCNContainer
                 return;
             }
 
-            _container.UpdatePhase();
+            (_container as ILifecycleParticipant).UpdatePhase();
         }
 
         
@@ -74,6 +75,11 @@ namespace OCNContainer
             (_container as ILifecycleParticipant).StartPhase();
         }
 
+        void ILifecycleParticipant.UpdatePhase()
+        {
+            //TODO: probably create single call from LifecycleManager, if not => create another Interface to inherit full lifecycle with update
+        }
+
         void IInstallBindingPhaseParticipant.InstallBindingsPhase()
         {
             if (_container == null)
@@ -87,6 +93,12 @@ namespace OCNContainer
             {
                 OnInstallationComplete?.Invoke();
             };
+        }
+
+        public bool TryFindRegistration<T>(out T foundObject) where T : class
+        {
+            foundObject = null;
+            return _parentContainerLookupableImplementation != null && _parentContainerLookupableImplementation.TryFindRegistration(out foundObject);
         }
     }
 }
