@@ -27,6 +27,10 @@
         public void Awake();
 
         public void Start();
-    } 
+    }
 
+    public interface IInstallerResetable
+    {
+        public void ResetInstaller();
+    }
 }

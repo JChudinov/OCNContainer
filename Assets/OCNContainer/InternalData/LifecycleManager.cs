@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using OCNContainer.InternalData.DebugAndErrorHandling;
 using UnityEngine;
 
 namespace OCNContainer.InternalData
@@ -49,18 +50,26 @@ namespace OCNContainer.InternalData
                 containerLifecycle.ScopeResolvePhase();
             }
 
-            foreach (var containerLifecycle in _participants)
+            if (ContainerDebugUtilities.b_ValidationMode == false)
             {
-                containerLifecycle.EventSubscriptionsPhase();
-            }
+                foreach (var containerLifecycle in _participants)
+                {
+                    containerLifecycle.EventSubscriptionsPhase();
+                }
             
-            foreach (var containerLifecycle in _participants)
-            {
-                containerLifecycle.StartPhase();
+                foreach (var containerLifecycle in _participants)
+                {
+                    containerLifecycle.StartPhase();
+                }
             }
             
             _participants.Clear();
-            
+
+            //TODO: not sure if it should only be cleared in validation mode or not
+            if (ContainerDebugUtilities.b_ValidationMode)
+            {
+                _bindingPhaseParticipants.Clear();
+            }
         }
     }
 

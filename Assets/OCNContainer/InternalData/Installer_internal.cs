@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace OCNContainer
 {
-    public abstract partial class Installer : MonoBehaviour, ILifecycleParticipant, IInstallBindingPhaseParticipant, IParentContainerLookupable
+    public abstract partial class Installer : MonoBehaviour, ILifecycleParticipant, IInstallBindingPhaseParticipant, IParentContainerLookupable, IInstallerResetable
     {
         private Container _container;
         private IParentContainerLookupable _parentContainerLookupableImplementation;
@@ -29,9 +29,6 @@ namespace OCNContainer
         {
             LifecycleManager.RegisterLifecycleParticipant(this);
             LifecycleManager.RegisterForBindingPhaseParticipant(this);
-
-            
-            
         }
 
         private void Start()
@@ -44,7 +41,7 @@ namespace OCNContainer
 
         private void Update()
         {
-            if (Container == null)
+            if (Container_internal == null)
             {
                 Debug.LogError("Container is null");
                 return;
@@ -84,7 +81,7 @@ namespace OCNContainer
         {
             if (_container == null)
             {
-                InstallBindings(Container);
+                InstallBindings(Container_internal);
                 
             }
             //Not null after calling property
@@ -99,6 +96,11 @@ namespace OCNContainer
         {
             foundObject = null;
             return _parentContainerLookupableImplementation != null && _parentContainerLookupableImplementation.TryFindRegistration(out foundObject);
+        }
+
+        void IInstallerResetable.ResetInstaller()
+        {
+            _container = null;
         }
     }
 }

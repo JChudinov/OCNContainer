@@ -11,8 +11,6 @@ namespace OCNContainer
     // ReSharper disable once RedundantExtendsListEntry
     public abstract partial class Installer : MonoBehaviour
     {
-        protected IScopeRegistration Container => Container_internal; 
-
         public event Action OnInstallationComplete;
         
         protected abstract void InstallBindings(IScopeRegistration container);

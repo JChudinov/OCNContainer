@@ -88,12 +88,7 @@ namespace OCNContainer.InternalData
         {
             foundObject =  Resolve_Internal<T>(true, DebugInfo.InstallerType);
 
-            if (foundObject != null)
-            {
-                return true;
-            }
-
-            return false;
+            return foundObject != null;
         }
     }
 }

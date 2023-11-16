@@ -304,14 +304,6 @@ namespace OCNContainer.InternalData
                     }
                     return null;
                 }
-                if (b_fromInternalContainerLookup)
-                {
-                    return null;
-                }
-                else
-                {
-                    
-                }
             }
         }
 

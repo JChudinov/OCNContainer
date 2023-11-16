@@ -19,6 +19,8 @@ namespace OCNContainer.InternalData.DebugAndErrorHandling
     public static class ContainerDebugUtilities
     {
         public static bool b_ValidationMode = false;
+        public static bool b_ValidationSucceeded = true;
+        
         //types of data with witch errors occured
         private static readonly List<Type> _defectiveTypes = new();
         
@@ -37,6 +39,8 @@ namespace OCNContainer.InternalData.DebugAndErrorHandling
 
         public static void LogError(string message, ContainerDebugInfo containerDebugInfo, Type defectiveType, LoggingBypassMode loggingBypassMode)
         {
+            if (b_ValidationMode) b_ValidationSucceeded = false;
+            
             if (_defectiveTypes.Contains(defectiveType))
             {
                 if (loggingBypassMode == LoggingBypassMode.FirstOnType)
