@@ -16,13 +16,13 @@ namespace OCNContainer.InternalData.DebugAndErrorHandling
         private static void ValidateContainers()
         {
             Debug.Log("Scene validation begin");
-            
+
             ContainerDebugUtilities.b_ValidationMode = true;
-            
+
             var installers = Object.FindObjectsByType<Installer>(FindObjectsInactive.Include, FindObjectsSortMode.None).ToList();
 
             var factorySpawnedInstallers = SpawnInstallersFromFactories();
-            
+
             installers.AddRange(factorySpawnedInstallers);
 
             foreach (var installer in installers)
@@ -42,19 +42,18 @@ namespace OCNContainer.InternalData.DebugAndErrorHandling
                 Debug.LogError("Validation failed");
             }
 
-            
+
             foreach (IInstallerResetable installer in installers)
             {
                 installer.ResetInstaller();
             }
-            
+
             foreach (var spawnedInstaller in factorySpawnedInstallers)
             {
                 Object.DestroyImmediate(spawnedInstaller.gameObject);
             }
 
             ContainerDebugUtilities.b_ValidationMode = false;
-
         }
 
         private static List<Installer> SpawnInstallersFromFactories()
@@ -62,7 +61,7 @@ namespace OCNContainer.InternalData.DebugAndErrorHandling
             List<Type> factoryTypes = new();
             List<object> allFactoriesInScene = new();
             List<Installer> allInstallers = new();
-            
+
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
                 var result =
@@ -70,32 +69,37 @@ namespace OCNContainer.InternalData.DebugAndErrorHandling
                         .GetTypes()
                         .Where(t => t.BaseType != null && t.BaseType.IsGenericType &&
                                     t.BaseType.GetGenericTypeDefinition() == typeof(Factory<>)).ToList();
-                
+
                 factoryTypes.AddRange(result);
             }
 
             foreach (var factoryType in factoryTypes)
             {
                 var factories = Object.FindObjectsByType(factoryType, FindObjectsInactive.Include, FindObjectsSortMode.None);
-                
+
                 allFactoriesInScene.AddRange(factories);
             }
 
             foreach (var factoryObject in allFactoriesInScene)
             {
-                FieldInfo field = factoryObject.GetType().BaseType.GetField("installerPrefab", BindingFlags.NonPublic | BindingFlags.Instance);
-
-                var installerPrefab_unspecified = field.GetValue(factoryObject);
-
-                if (installerPrefab_unspecified is Installer installerPrefab)
+                var memberInfo = factoryObject.GetType().BaseType;
+                if (memberInfo != null)
                 {
-                    var installer = Object.Instantiate(installerPrefab);
-                    allInstallers.Add(installer);
+                    FieldInfo field = memberInfo.GetField("installerPrefab", BindingFlags.NonPublic | BindingFlags.Instance);
+
+                    if (field == null) continue;
+                    
+                    var installerPrefab_unspecified = field.GetValue(factoryObject);
+
+                    if (installerPrefab_unspecified is Installer installerPrefab)
+                    {
+                        var installer = Object.Instantiate(installerPrefab);
+                        allInstallers.Add(installer);
+                    }
                 }
             }
 
             return allInstallers;
         }
-
     }
 }

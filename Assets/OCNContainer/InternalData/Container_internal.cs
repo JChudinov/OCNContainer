@@ -288,7 +288,7 @@ namespace OCNContainer.InternalData
             //dependency in parent containers and if no dep found -> Log error. 
             else
             {
-                if (_parentContainer.TryFindRegistration(out T foundObject))
+                if (_parentContainer != null &&  _parentContainer.TryFindRegistration(out T foundObject))
                 {
                     return foundObject;
                 }
