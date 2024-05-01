@@ -78,7 +78,7 @@ namespace OCNContainer.InternalData
             };
         }
 
-        public static RegistrationData CreateFromImplementationWithInstance<T>(IFacadeSettable facadeSettable, object obj)
+        public static RegistrationData CreateFromImplementationWithInstance<T>(IFacadeSettable facadeSettable, T obj)
         {
             _facadeSettable = facadeSettable;
             
@@ -93,7 +93,7 @@ namespace OCNContainer.InternalData
             };
         }
 
-        public static RegistrationData CreateFromInterfaceWithInstance<T>(IFacadeSettable facadeSettable, object obj)
+        public static RegistrationData CreateFromInterfaceWithInstance<T>(IFacadeSettable facadeSettable, T obj)
         {
             _facadeSettable = facadeSettable;
             
@@ -114,22 +114,5 @@ namespace OCNContainer.InternalData
 
 namespace OCNContainer.InternalData
 {
-    public interface IRegistrationFacadeBuilder
-    {
-        public void AsFacade();
-    }
-
-    public interface IRegistrationLazyStateBuilder
-    {
-        public void AsLazy();
-    }
-    
     //Builder for Lazy or Facade types of registrations
-    public interface IRegistrationBuilder : IRegistrationFacadeBuilder, IRegistrationLazyStateBuilder
-    {
-    }
-    
-    public interface IRegistrationFromInstanceBuilder : IRegistrationFacadeBuilder
-    {
-    }
 }

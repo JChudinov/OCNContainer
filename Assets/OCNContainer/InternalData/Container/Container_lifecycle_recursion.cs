@@ -22,7 +22,7 @@ namespace OCNContainer.InternalData
             foreach (var registrationData in _creationPhaseList)
             {
                 registrationData.CreateObject();
-                AddToFullGameCycle(registrationData);
+                AddRegistrationDataToFullGameCycle(registrationData);
             }
 
             foreach (var subContainer in _subContainers)
@@ -49,7 +49,7 @@ namespace OCNContainer.InternalData
 
             foreach (var awakeable in _awakeablePool)
             {
-                awakeable.Initialize(this);
+                awakeable.OnInitialize(this);
             }
         }
 
@@ -57,7 +57,7 @@ namespace OCNContainer.InternalData
         {
             foreach (var subscribable in _subscribablePool)
             {
-                subscribable.EventSubscriptions();
+                subscribable.OnSubscription();
             }
         }
 
@@ -65,7 +65,7 @@ namespace OCNContainer.InternalData
         {
             foreach (var startable in _startablePool)
             {
-                startable.Start();
+                startable.OnStart();
             }
 
             OnStartCycleComplete?.Invoke();
@@ -80,7 +80,7 @@ namespace OCNContainer.InternalData
             
             foreach (var updateable in _updeablePool)
             {
-                updateable.Tick();
+                updateable.OnTick();
             }
         }
 

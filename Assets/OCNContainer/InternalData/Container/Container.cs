@@ -1,4 +1,5 @@
 ﻿using System;
+using UnityEngine;
 
 namespace OCNContainer.InternalData
 {
@@ -10,8 +11,11 @@ namespace OCNContainer.InternalData
         IRegistrationBuilder IScopeRegistration.Register<T1>() =>
             Register_Internal<T1>();
 
-        void IScopeRegistration.RegisterFromInstance<T>(T instance) =>
+        IRegistrationFromInstanceBuilder IScopeRegistration.RegisterFromInstance<T>(T instance) =>
             RegisterFromInstance_Internal<T>(instance);
+        
+        IRegistrationFromInstanceBuilder IScopeRegistration.RegisterFromHierarchyResolve<T>() =>
+            RegisterFromHierarchyResolve_Internal<T>();
         
         void IScopeRegistration.Bind<TImplementation, TInterface>() =>
             Bind_Internal<TImplementation, TInterface>(true);
@@ -21,5 +25,11 @@ namespace OCNContainer.InternalData
 
         T IScope.Resolve<T>() where T : class =>
             Resolve_Internal<T>();
+
+        T IScope.FindInHierarchy<T>() => 
+            FindInHierarchy_Internal<T>();
+
+        T IScope.AddToLifecycle<T>() => 
+            AddToLifecycle_Internal<T>();
     }
 }

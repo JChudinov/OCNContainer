@@ -3,21 +3,42 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using Object = UnityEngine.Object;
 
 namespace OCNContainer.InternalData.DebugAndErrorHandling
 {
     public static class ContainerValidation
     {
-        [MenuItem("Container/ValidateDependencies")]
-        private static void ValidateContainers()
+#if UNITY_EDITOR
+        [MenuItem("Container/Validate and run _v")]
+        private static void ValidateContainersAndRun()
+        {
+            if (Application.isPlaying) return;
+            
+            if (ValidateContainers())
+            {
+                EditorApplication.EnterPlaymode();
+            }
+        }
+#endif
+
+#if UNITY_EDITOR
+        [MenuItem("Container/Validate #v")]
+        private static void Validate()
+        {
+            if (Application.isPlaying) return;
+            
+            ValidateContainers();
+        }
+#endif
+        
+        private static bool ValidateContainers()
         {
             Debug.Log("Scene validation begin");
 
             ContainerDebugUtilities.b_ValidationMode = true;
+            ContainerDebugUtilities.SubscribeClickableHyperlinks();
 
             var installers = Object.FindObjectsByType<Installer>(FindObjectsInactive.Include, FindObjectsSortMode.None).ToList();
 
@@ -33,15 +54,6 @@ namespace OCNContainer.InternalData.DebugAndErrorHandling
 
             LifecycleManager.StartLifecycle();
 
-            if (ContainerDebugUtilities.b_ValidationSucceeded)
-            {
-                Debug.Log("Validation succeeded");
-            }
-            else
-            {
-                Debug.LogError("Validation failed");
-            }
-
 
             foreach (IInstallerResetable installer in installers)
             {
@@ -54,8 +66,23 @@ namespace OCNContainer.InternalData.DebugAndErrorHandling
             }
 
             ContainerDebugUtilities.b_ValidationMode = false;
-        }
+            
+            if (ContainerDebugUtilities.b_ValidationSucceeded)
+            {
+                Debug.Log("Validation succeeded");
+                ContainerDebugUtilities.ResetDebugUtilitiesAfterValidation();
 
+                return true;
+            }
+            else
+            {
+                Debug.LogError("Validation failed");
+                ContainerDebugUtilities.ResetDebugUtilitiesAfterValidation();
+
+                return false;
+            }
+        }
+        
         private static List<Installer> SpawnInstallersFromFactories()
         {
             List<Type> factoryTypes = new();
@@ -85,8 +112,8 @@ namespace OCNContainer.InternalData.DebugAndErrorHandling
                 var memberInfo = factoryObject.GetType().BaseType;
                 if (memberInfo != null)
                 {
-                    FieldInfo field = memberInfo.GetField("installerPrefab", BindingFlags.NonPublic | BindingFlags.Instance);
-
+                    PropertyInfo field = memberInfo.GetProperty("InstallerPrefab", BindingFlags.NonPublic | BindingFlags.Instance);
+                    
                     if (field == null) continue;
                     
                     var installerPrefab_unspecified = field.GetValue(factoryObject);

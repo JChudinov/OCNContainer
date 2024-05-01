@@ -1,13 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using OCNContainer.InternalData;
 using OCNContainer.InternalData.DebugAndErrorHandling;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 namespace OCNContainer.InternalData
 {
     public partial class Container : IContainerLifecycleParticipant, IScope, IScopeRegistration, IFacadeSettable, IParentContainerLookupable
     {
+        private readonly Transform _contextRoot;
         private readonly Dictionary<Type, object> _registrationDataDictionary = new();
         private readonly Dictionary<Type, Type> _interfaceToTypeDictionary = new();
 
@@ -23,7 +26,6 @@ namespace OCNContainer.InternalData
         //for SubContainers only
         private Type _facadeExpectedType;
 
-
         #region Debug
 
         private ContainerDebugInfo DebugInfo { get; }
@@ -34,8 +36,10 @@ namespace OCNContainer.InternalData
         #endregion
 
 
-        public Container(GameObject bindedGameObject, Type installerType, IParentContainerLookupable parentContainer, bool isCoreContainer, Type facadeExpectedType = null)
+        public Container(Transform contextRoot, GameObject bindedGameObject, Type installerType, IParentContainerLookupable parentContainer,
+            bool isCoreContainer, Type facadeExpectedType = null)
         {
+            _contextRoot = contextRoot;
             _parentContainer = parentContainer;
             _isCoreContainer = isCoreContainer;
             _facadeExpectedType = facadeExpectedType;
@@ -43,7 +47,7 @@ namespace OCNContainer.InternalData
 
             foreach (var awakeable in _awakeablePool)
             {
-                awakeable.Initialize(this);
+                awakeable.OnInitialize(this);
             }
         }
 
@@ -79,7 +83,7 @@ namespace OCNContainer.InternalData
 
         private void RegisterSubContainer_Internal<T>(Action<IScopeRegistration> subContainer)
         {
-            var newSubContainer = new Container(DebugInfo.BindedGameObject, DebugInfo.InstallerType, this, false, typeof(T));
+            var newSubContainer = new Container(_contextRoot, DebugInfo.BindedGameObject, DebugInfo.InstallerType, this, false, typeof(T));
             _subContainers.Add(newSubContainer);
             subContainer?.Invoke(newSubContainer);
         }
@@ -114,7 +118,7 @@ namespace OCNContainer.InternalData
             }
         }
 
-        private void RegisterFromInstance_Internal<T>(T instance) where T : class
+        private IRegistrationFromInstanceBuilder RegisterFromInstance_Internal<T>(T instance) where T : class
         {
             if (instance == null)
             {
@@ -123,7 +127,7 @@ namespace OCNContainer.InternalData
                     DebugInfo,
                     typeof(T),
                     LoggingBypassMode.AlwaysLog);
-                return;
+                return new RegistrationBuilderNullHandler();
             }
 
             var registrationData = RegistrationData.CreateFromImplementationWithInstance<T>(this, instance);
@@ -135,6 +139,44 @@ namespace OCNContainer.InternalData
                     DebugInfo,
                     typeof(T),
                     LoggingBypassMode.AlwaysLog);
+                return new RegistrationBuilderNullHandler();
+            }
+            else
+            {
+                AddRegistrationDataToFullGameCycle(registrationData);
+                return registrationData;
+            }
+        }
+
+        private IRegistrationFromInstanceBuilder RegisterFromHierarchyResolve_Internal<T>() where T : class
+        {
+            var instance = _contextRoot.GetComponentInChildren<T>();
+
+            if (instance == null)
+            {
+                ContainerDebugUtilities.LogError(
+                    $"Cant find instance of type: \"{typeof(T).Name}\" in hierarchy ",
+                    DebugInfo,
+                    typeof(T),
+                    LoggingBypassMode.AlwaysLog);
+                return new RegistrationBuilderNullHandler();
+            }
+
+            var registrationData = RegistrationData.CreateFromImplementationWithInstance<T>(this, instance);
+
+            if (!_registrationDataDictionary.TryAdd(typeof(T), registrationData))
+            {
+                ContainerDebugUtilities.LogError(
+                    $"Type: {typeof(T)} already registered ",
+                    DebugInfo,
+                    typeof(T),
+                    LoggingBypassMode.AlwaysLog);
+                return new RegistrationBuilderNullHandler();
+            }
+            else
+            {
+                AddRegistrationDataToFullGameCycle(registrationData);
+                return registrationData;
             }
         }
 
@@ -202,7 +244,7 @@ namespace OCNContainer.InternalData
                     var registrationData = RegistrationData.CreateFromInterfaceWithInstance<TImplementation>(this, instance);
                     if (_registrationDataDictionary.TryAdd(typeof(TImplementation), registrationData))
                     {
-                        //_creationPhaseList.Add(registrationData);
+                        AddRegistrationDataToFullGameCycle(registrationData);
                     }
                     else
                     {
@@ -241,10 +283,9 @@ namespace OCNContainer.InternalData
                             Debug.LogError($"No Requester Type found while trying to search \"{typeToResolve}\"");
                             return null;
                         }
-                        
+
                         if (b_fromInternalContainerLookup)
                         {
-                            
                             ContainerDebugUtilities.LogError(
                                 $"Cant resolve concrete type \" {typeof(T)}\"" +
                                 $" while resolving \"{requesterType}\" as it was registered as interface ",
@@ -260,6 +301,7 @@ namespace OCNContainer.InternalData
                                 typeof(T),
                                 LoggingBypassMode.FirstOnType);
                         }
+
                         return null;
                     }
 
@@ -288,7 +330,7 @@ namespace OCNContainer.InternalData
             //dependency in parent containers and if no dep found -> Log error. 
             else
             {
-                if (_parentContainer != null &&  _parentContainer.TryFindRegistration(out T foundObject))
+                if (_parentContainer != null && _parentContainer.TryFindRegistration(out T foundObject))
                 {
                     return foundObject;
                 }
@@ -297,14 +339,59 @@ namespace OCNContainer.InternalData
                     if (b_fromInternalContainerLookup == false)
                     {
                         ContainerDebugUtilities.LogError(
-                            $"Unable to retrieve proper registration data related for type: \"{typeToResolve.Name}\" ",
+                            $"Unable to retrieve proper registration data related for type: \"{typeToResolve.Name}\" " +
+                            $"{ContainerDebugUtilities.LogResolveFailedStackTrace()} ",
                             DebugInfo,
                             typeToResolve,
                             LoggingBypassMode.FirstOnType);
                     }
+
                     return null;
                 }
             }
+        }
+
+
+        private T FindInHierarchy_Internal<T>() where T : Component
+        {
+            var instance = _contextRoot.GetComponentInChildren<T>();
+
+            if (instance == null)
+            {
+                ContainerDebugUtilities.LogError(
+                    $"Cant find instance of type: \"{typeof(T).Name}\" while searching in hierarchy" +
+                    $" {ContainerDebugUtilities.LogResolveFailedStackTrace()} ",
+                    DebugInfo,
+                    typeof(T),
+                    LoggingBypassMode.AlwaysLog);
+                return null;
+            }
+
+            return instance;
+        }
+
+        private T AddToLifecycle_Internal<T>() where T : class, new()
+        {
+            if (typeof(T).IsSubclassOf(typeof(MonoBehaviour)))
+            {
+                ContainerDebugUtilities.LogError(
+                    $"Unable to Register subclass of MonoBehaviour: \"{typeof(T)}\" without providing and instance",
+                    DebugInfo,
+                    typeof(T),
+                    LoggingBypassMode.AlwaysLog);
+                return null;
+            }
+
+            var obj = new T();
+            
+            AddToFullGameCycle(obj, true);
+
+            if (obj is IInitializable initializable)
+            {
+                initializable.OnInitialize(this);
+            }
+            
+            return obj;
         }
 
 //TODO:
@@ -327,15 +414,18 @@ namespace OCNContainer.InternalData
             return false;
         }
 
-        private void AddToFullGameCycle(RegistrationData registration)
+        private void AddRegistrationDataToFullGameCycle(RegistrationData registration)
         {
             if (registration.IsLazy && registration.Obj is IInitializable or IStartable)
             {
                 Debug.LogError("Trying to add Lazy binding of class ");
             }
 
-            var obj = registration.Obj;
+            AddToFullGameCycle(registration.Obj);
+        }
 
+        private void AddToFullGameCycle(object obj, bool b_ignoreInitializablePhase = false)
+        {
             if (obj is ITickable updateable)
             {
                 _updeablePool.Add(updateable);
@@ -346,9 +436,12 @@ namespace OCNContainer.InternalData
                 _startablePool.Add(startable);
             }
 
-            if (obj is IInitializable awakeable)
+            if (b_ignoreInitializablePhase == false)
             {
-                _awakeablePool.Add(awakeable);
+                if (obj is IInitializable awakeable)
+                {
+                    _awakeablePool.Add(awakeable);
+                }
             }
 
             if (obj is ISubscribable subscribable)

@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using OCNContainer.InternalData.DebugAndErrorHandling;
+using UnityEditor;
 using UnityEngine;
 
 namespace OCNContainer.InternalData
@@ -15,10 +17,10 @@ namespace OCNContainer.InternalData
         public static void RegisterForBindingPhaseParticipant(IInstallBindingPhaseParticipant bindingPhaseParticipant)
         {
             _bindingPhaseParticipants.Add(bindingPhaseParticipant);
-            
+
             if (b_EngineStartPhaseBegin) b_EngineStartPhaseBegin = false;
         }
-        
+
         public static void RegisterLifecycleParticipant(ILifecycleParticipant participant)
         {
             _participants.Add(participant);
@@ -26,11 +28,6 @@ namespace OCNContainer.InternalData
             if (b_EngineStartPhaseBegin) b_EngineStartPhaseBegin = false;
         }
 
-        public static void ExcludeParticipant(ILifecycleParticipant participant)
-        {
-            _participants.Remove(participant);
-        }
-        
         public static void StartLifecycle()
         {
             b_EngineStartPhaseBegin = true;
@@ -42,7 +39,7 @@ namespace OCNContainer.InternalData
 
             foreach (var containerLifecycle in _participants)
             {
-                containerLifecycle.InstanceCreationPhase();   
+                containerLifecycle.InstanceCreationPhase();
             }
 
             foreach (var containerLifecycle in _participants)
@@ -56,13 +53,13 @@ namespace OCNContainer.InternalData
                 {
                     containerLifecycle.EventSubscriptionsPhase();
                 }
-            
+
                 foreach (var containerLifecycle in _participants)
                 {
                     containerLifecycle.StartPhase();
                 }
             }
-            
+
             _participants.Clear();
 
             //TODO: not sure if it should only be cleared in validation mode or not
@@ -71,7 +68,30 @@ namespace OCNContainer.InternalData
                 _bindingPhaseParticipants.Clear();
             }
         }
-    }
 
-    
+        //Unity aint clear static on exit play mode, so have to do it manually, not to waste time reloading Domain
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void PlayStateNotifier()
+        {
+#if UNITY_EDITOR
+            EditorApplication.playModeStateChanged += ModeChanged;
+#endif
+        }
+        
+#if UNITY_EDITOR
+        private static void ModeChanged(PlayModeStateChange playModeState)
+        {
+            if (playModeState == PlayModeStateChange.ExitingPlayMode)
+            {
+                ClearAllStaticData();
+            }
+        }
+        
+        private static void ClearAllStaticData()
+        {
+            _bindingPhaseParticipants.Clear();
+            _participants.Clear();
+        }
+#endif
+    }
 }

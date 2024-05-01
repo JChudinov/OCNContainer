@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace OCNContainer
+﻿namespace OCNContainer
 {
     public partial interface IScopeRegistration : IScope
     {

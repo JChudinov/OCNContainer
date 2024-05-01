@@ -6,6 +6,7 @@ namespace OCNContainer
 {
     public abstract partial class Installer : MonoBehaviour, ILifecycleParticipant, IInstallBindingPhaseParticipant, IParentContainerLookupable, IInstallerResetable
     {
+        [SerializeField] private Transform _contextRoot;
         private Container _container;
         private IParentContainerLookupable _parentContainerLookupableImplementation;
 
@@ -19,7 +20,7 @@ namespace OCNContainer
                 }
                 else
                 {
-                    _container = new Container(gameObject, this.GetType(), this, true);
+                    _container = new Container(_contextRoot, gameObject, this.GetType(), this, true);
                     return _container;
                 }
             }
@@ -84,7 +85,7 @@ namespace OCNContainer
                 InstallBindings(Container_internal);
                 
             }
-            //Not null after calling property
+            //Not null after calling Container_internal
             // ReSharper disable once PossibleNullReferenceException
             _container.OnStartCycleComplete += () =>
             {

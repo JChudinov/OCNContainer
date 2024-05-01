@@ -5,20 +5,17 @@ using UnityEngine;
 
 namespace OCNContainer
 {
-    public abstract class SceneInstaller : MonoBehaviour
+    public abstract class SceneInstaller : Installer
     {
-        private Container _sceneContainer;
-
         private static SceneInstaller Instance;
-
         private void Awake()
         {
             if (Instance == null)
             {
-                Instance = this;
+                
+                LifecycleManager.RegisterLifecycleParticipant(this);
+                LifecycleManager.RegisterForBindingPhaseParticipant(this);
             }
         }
-
-        protected abstract void SceneSetup();
     }
 }

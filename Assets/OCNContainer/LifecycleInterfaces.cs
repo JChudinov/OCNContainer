@@ -2,28 +2,27 @@
 {
     public interface IInitializable
     {
-        void Initialize(IScope scope);
+        void OnInitialize(IScope scope);
     }
 
     public interface ISubscribable
     {
-        void EventSubscriptions();
+        void OnSubscription();
     }
 
     public interface IEnableable
     {
-        void OnEnable();
-
-        void OnDisable();
+        void OnBecameActive(bool b_isActive);
+        
     }
     
     public interface IStartable
     {
-        void Start();
+        void OnStart();
     }
 
     public interface ITickable
     {
-        void Tick();
+        void OnTick();
     }
 }

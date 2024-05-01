@@ -9,7 +9,7 @@ namespace OCNContainer
     {
         public static IScope CreateFromMethod(Action<IScopeRegistration> installer)
         {
-            var container = new ContainerFromMethod(new GameObject("TestInstaller"), typeof(Installer), null, true, installer);
+            var container = new ContainerFromMethod(null, new GameObject("TestInstaller"), typeof(Installer), null, true, installer);
 
             LifecycleManager.RegisterLifecycleParticipant(container);
             LifecycleManager.RegisterForBindingPhaseParticipant(container);
@@ -25,8 +25,8 @@ namespace OCNContainer.InternalData
     {
         private readonly Action<IScopeRegistration> _installBindingsCallback;
 
-        public ContainerFromMethod(GameObject bindedGameObject, Type installerType, IParentContainerLookupable parentContainer, bool isCoreContainer,
-            Action<IScopeRegistration> installBindingsCallback, Type facadeExpectedType = null) : base(bindedGameObject, installerType,
+        public ContainerFromMethod(Transform contextRoot, GameObject bindedGameObject, Type installerType, IParentContainerLookupable parentContainer, bool isCoreContainer,
+            Action<IScopeRegistration> installBindingsCallback, Type facadeExpectedType = null) : base(contextRoot, bindedGameObject, installerType,
             parentContainer, isCoreContainer, facadeExpectedType)
         {
             _installBindingsCallback = installBindingsCallback;
